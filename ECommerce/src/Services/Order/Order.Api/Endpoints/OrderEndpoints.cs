@@ -64,7 +64,7 @@ public static class OrderEndpoints
     {
         var group = app.MapGroup("/api/orders");
 
-        group.MapPost("/", async (CreateOrderRequest? request, HttpContext http, OrderDbContext db, CancellationToken ct) =>
+        group.MapPost("/", async (CreateOrderRequest? request, HttpContext http, IOrderRepository repository, CancellationToken ct) =>
         {
             var errors = CreateOrderValidator.Validate(request);
             if (errors.Count > 0)
@@ -80,18 +80,17 @@ public static class OrderEndpoints
             var envelope = EventEnvelope<OrderCreatedPayload>.Create(EventTypes.OrderCreated, payload, correlationId);
 
             // Sipariş ve outbox kaydı aynı transaction'da (tek SaveChanges) yazılır.
-            db.Orders.Add(order);
-            db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(envelope, Topology.RoutingKeys.OrderCreated));
-            await db.SaveChangesAsync(ct);
+            repository.Add(order);
+            repository.AddOutboxMessage(OutboxModelBuilderExtensions.CreateOutboxMessage(envelope, Topology.RoutingKeys.OrderCreated));
+            await repository.SaveChangesAsync(ct);
 
             http.Response.Headers[CorrelationHeader] = correlationId.ToString();
             return Results.Accepted($"/api/orders/{order.Id}", new { orderId = order.Id, status = order.Status.ToString() });
         });
 
-        group.MapGet("/{orderId:guid}", async (Guid orderId, OrderDbContext db, CancellationToken ct) =>
+        group.MapGet("/{orderId:guid}", async (Guid orderId, IOrderRepository repository, CancellationToken ct) =>
         {
-            var order = await db.Orders.AsNoTracking().Include(o => o.Items)
-                .FirstOrDefaultAsync(o => o.Id == orderId, ct);
+            var order = await repository.GetWithItemsAsync(orderId, ct);
 
             return order is null
                 ? Results.NotFound()

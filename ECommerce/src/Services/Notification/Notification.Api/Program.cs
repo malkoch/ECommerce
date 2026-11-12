@@ -15,6 +15,7 @@ builder.Services.Configure<RetryOptions>(builder.Configuration.GetSection(RetryO
 builder.Services.Configure<MockProviderOptions>(builder.Configuration.GetSection(MockProviderOptions.SectionName));
 builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
 builder.Services.AddSingleton<ISmsSender, LoggingSmsSender>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<SendNotificationHandler>();
 builder.Services.AddHostedService<OrderEventsConsumer>();
 builder.Services.AddReadinessChecks<NotificationDbContext>();

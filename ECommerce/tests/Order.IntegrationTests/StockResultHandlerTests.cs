@@ -2,6 +2,7 @@ using Messaging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Order.Api.Domain;
 using Order.Api.Handlers;
+using Order.Api.Infrastructure;
 
 namespace Order.IntegrationTests;
 
@@ -18,13 +19,13 @@ public class StockResultHandlerTests(OrderDatabaseFixture fixture) : IClassFixtu
     private async Task<ResultOutcome> HandleAsync(EventEnvelope<StockReservationSucceededPayload> e)
     {
         await using var db = fixture.CreateContext();
-        return await new StockResultHandler(db, NullLogger<StockResultHandler>.Instance).HandleSucceededAsync(e, default);
+        return await new StockResultHandler(new OrderRepository(db), NullLogger<StockResultHandler>.Instance).HandleSucceededAsync(e, default);
     }
 
     private async Task<ResultOutcome> HandleAsync(EventEnvelope<StockReservationFailedPayload> e)
     {
         await using var db = fixture.CreateContext();
-        return await new StockResultHandler(db, NullLogger<StockResultHandler>.Instance).HandleFailedAsync(e, default);
+        return await new StockResultHandler(new OrderRepository(db), NullLogger<StockResultHandler>.Instance).HandleFailedAsync(e, default);
     }
 
     [Fact]

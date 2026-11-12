@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Notification.Api.Domain;
 using Notification.Api.Handlers;
+using Notification.Api.Infrastructure;
 
 namespace Notification.IntegrationTests;
 
@@ -14,7 +15,7 @@ public class SendNotificationHandlerTests(NotificationDatabaseFixture fixture) :
     private Task HandleAsync(OrderResultNotification n, FakeSender sender, int maxAttempts = 3)
     {
         var db = fixture.CreateContext();
-        var handler = new SendNotificationHandler(db, sender, sender,
+        var handler = new SendNotificationHandler(new NotificationRepository(db), sender, sender,
             Options.Create(new RetryOptions { MaxAttempts = maxAttempts, BaseDelayMs = 0 }),
             NullLogger<SendNotificationHandler>.Instance);
         return handler.HandleAsync(n, CancellationToken.None).ContinueWith(t => { db.Dispose(); return t; }).Unwrap();

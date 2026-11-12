@@ -13,7 +13,7 @@ public enum ReservationOutcome
     Duplicate
 }
 
-public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockHandler> logger)
+public sealed class ReserveStockHandler(IStockRepository repository, ILogger<ReserveStockHandler> logger)
 {
     public const string InsufficientStock = "INSUFFICIENT_STOCK";
     private const int MaxClaimAttempts = 5;
@@ -33,29 +33,16 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             .OrderBy(i => i.ProductId)
             .ToList();
 
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await using var tx = await repository.BeginTransactionAsync(ct);
 
-        var now = DateTime.UtcNow;
-        var inboxRows = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-             INSERT INTO inbox_messages (message_id, event_type, processed_at_utc)
-             VALUES ({envelope.MessageId}, {envelope.EventType}, {now})
-             ON CONFLICT (message_id) DO NOTHING
-             """, ct);
-        if (inboxRows == 0)
+        if (!await repository.TryRegisterInboxMessageAsync(envelope.MessageId, envelope.EventType, ct))
         {
             logger.LogInformation("Duplicate message {MessageId} ignored", envelope.MessageId);
             return ReservationOutcome.Duplicate;
         }
 
         var reservationId = Guid.NewGuid();
-        var reservationRows = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-             INSERT INTO stock_reservations (id, order_id, status, created_at_utc)
-             VALUES ({reservationId}, {order.OrderId}, {ReservationStatus.Pending}, {now})
-             ON CONFLICT (order_id) DO NOTHING
-             """, ct);
-        if (reservationRows == 0)
+        if (!await repository.TryCreateReservationAsync(reservationId, order.OrderId, ct))
         {
             await tx.CommitAsync(ct);
             logger.LogInformation("Order {OrderId} already has a reservation; message {MessageId} ignored",
@@ -67,32 +54,22 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
 
         if (failedProducts.Count > 0)
         {
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE stock_reservations SET status = {ReservationStatus.Failed}, reason_code = {InsufficientStock} WHERE id = {reservationId}",
-                ct);
+            await repository.MarkReservationFailedAsync(reservationId, InsufficientStock, ct);
 
             var failed = EventEnvelope<StockReservationFailedPayload>.Create(EventTypes.StockReservationFailed,
                 new StockReservationFailedPayload(order.OrderId, InsufficientStock, failedProducts), envelope.CorrelationId);
-            db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(failed, Topology.RoutingKeys.StockReservationFailed));
+            repository.AddOutboxMessage(OutboxModelBuilderExtensions.CreateOutboxMessage(failed, Topology.RoutingKeys.StockReservationFailed));
         }
         else
         {
-            foreach (var (productId, quantity) in items)
-            {
-                await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"INSERT INTO stock_reservation_items (reservation_id, product_id, quantity) VALUES ({reservationId}, {productId}, {quantity})",
-                    ct);
-            }
-
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE stock_reservations SET status = {ReservationStatus.Succeeded} WHERE id = {reservationId}", ct);
+            await repository.MarkReservationSucceededAsync(reservationId, items, ct);
 
             var succeeded = EventEnvelope<StockReservationSucceededPayload>.Create(EventTypes.StockReservationSucceeded,
                 new StockReservationSucceededPayload(order.OrderId, reservationId), envelope.CorrelationId);
-            db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(succeeded, Topology.RoutingKeys.StockReservationSucceeded));
+            repository.AddOutboxMessage(OutboxModelBuilderExtensions.CreateOutboxMessage(succeeded, Topology.RoutingKeys.StockReservationSucceeded));
         }
 
-        await db.SaveChangesAsync(ct);
+        await repository.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
         var outcome = failedProducts.Count > 0 ? ReservationOutcome.Failed : ReservationOutcome.Succeeded;
@@ -119,15 +96,7 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             foreach (var item in items)
             {
                 var (productId, quantity) = item;
-                var claimed = await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"""
-                     UPDATE stock_units SET reservation_id = {reservationId}
-                     WHERE id IN (
-                         SELECT id FROM stock_units
-                         WHERE product_id = {productId} AND reservation_id IS NULL
-                         LIMIT {quantity}
-                         FOR UPDATE SKIP LOCKED)
-                     """, ct);
+                var claimed = await repository.ClaimUnitsAsync(reservationId, productId, quantity, ct);
                 if (claimed < quantity)
                 {
                     shortItems.Add(item);
@@ -145,9 +114,7 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             var insufficient = new List<Guid>();
             foreach (var (productId, quantity) in items)
             {
-                var free = await db.Database
-                    .SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM stock_units WHERE product_id = {productId} AND reservation_id IS NULL")
-                    .SingleAsync(ct);
+                var free = await repository.CountFreeUnitsAsync(productId, ct);
                 if (free < quantity)
                 {
                     insufficient.Add(productId);

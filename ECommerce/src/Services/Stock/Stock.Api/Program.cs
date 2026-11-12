@@ -12,6 +12,7 @@ builder.Services.AddDbContext<StockDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("StockDb")));
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddScoped<IStockRepository, StockRepository>();
 builder.Services.AddScoped<ReserveStockHandler>();
 builder.Services.AddHostedService<OrderCreatedConsumer>();
 builder.Services.AddHostedService<OutboxPublisher<StockDbContext>>();

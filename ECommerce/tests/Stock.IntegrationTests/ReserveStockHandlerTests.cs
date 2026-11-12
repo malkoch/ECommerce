@@ -2,6 +2,7 @@ using Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stock.Api.Handlers;
+using Stock.Api.Infrastructure;
 
 namespace Stock.IntegrationTests;
 
@@ -16,7 +17,7 @@ public class ReserveStockHandlerTests(StockDatabaseFixture fixture) : IClassFixt
     private async Task<ReservationOutcome> HandleAsync(EventEnvelope<OrderCreatedPayload> envelope)
     {
         await using var db = fixture.CreateContext();
-        return await new ReserveStockHandler(db, NullLogger<ReserveStockHandler>.Instance)
+        return await new ReserveStockHandler(new StockRepository(db), NullLogger<ReserveStockHandler>.Instance)
             .HandleAsync(envelope, CancellationToken.None);
     }
 

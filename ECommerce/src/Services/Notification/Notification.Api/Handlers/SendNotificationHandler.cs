@@ -18,7 +18,7 @@ public sealed class RetryOptions
 public sealed class NotificationDeliveryException(string message) : PermanentMessageException(message);
 
 public sealed class SendNotificationHandler(
-    NotificationDbContext db, IEmailSender email, ISmsSender sms, IOptions<RetryOptions> retry,
+    INotificationRepository repository, IEmailSender email, ISmsSender sms, IOptions<RetryOptions> retry,
     ILogger<SendNotificationHandler> logger)
 {
     /// <summary>
@@ -36,25 +36,25 @@ public sealed class SendNotificationHandler(
                 ? $"customer-{n.CustomerId}@example.invalid"
                 : $"customer:{n.CustomerId}";
 
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"""
-                 INSERT INTO notifications (id, message_id, correlation_id, order_id, customer_id, event_type, channel,
-                                            recipient, subject, body, status, attempts, created_at_utc)
-                 VALUES ({Guid.NewGuid()}, {n.MessageId}, {n.CorrelationId}, {n.OrderId}, {n.CustomerId}, {n.EventType},
-                         {channel}, {recipient}, {subject}, {body}, {NotificationStatus.Pending}, 0, {now})
-                 ON CONFLICT (message_id, channel) DO NOTHING
-                 """, ct);
+            await repository.CreateIfNotExistsAsync(new NotificationRecord
+            {
+                Id = Guid.NewGuid(),
+                MessageId = n.MessageId,
+                CorrelationId = n.CorrelationId,
+                OrderId = n.OrderId,
+                CustomerId = n.CustomerId,
+                EventType = n.EventType,
+                Channel = channel,
+                Recipient = recipient,
+                Subject = subject,
+                Body = body,
+                CreatedAtUtc = now
+            }, ct);
         }
 
         // Kilitli satırlar başka bir worker tarafından işleniyor demektir; atlanır.
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        var rows = await db.Notifications
-            .FromSqlInterpolated($"""
-                                  SELECT * FROM notifications
-                                  WHERE message_id = {n.MessageId} AND status <> {NotificationStatus.Sent}
-                                  FOR UPDATE SKIP LOCKED
-                                  """)
-            .ToListAsync(ct);
+        await using var tx = await repository.BeginTransactionAsync(ct);
+        var rows = await repository.LockUnsentAsync(n.MessageId, ct);
 
         foreach (var row in rows)
         {
@@ -96,7 +96,7 @@ public sealed class SendNotificationHandler(
                 row.Status = NotificationStatus.Sent;
                 row.SentAtUtc = DateTime.UtcNow;
                 row.LastError = null;
-                await db.SaveChangesAsync(ct);
+                await repository.SaveChangesAsync(ct);
                 logger.LogInformation(
                     "Notification sent {Channel} {OrderId} {MessageId} {CorrelationId} Attempt={Attempt}",
                     row.Channel, row.OrderId, row.MessageId, row.CorrelationId, attempt);
@@ -106,7 +106,7 @@ public sealed class SendNotificationHandler(
             {
                 row.LastError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
                 row.Status = attempt == options.MaxAttempts ? NotificationStatus.Failed : NotificationStatus.Pending;
-                await db.SaveChangesAsync(ct);
+                await repository.SaveChangesAsync(ct);
                 logger.LogWarning(ex, "Notification attempt failed {Channel} {OrderId} {MessageId} Attempt={Attempt}",
                     row.Channel, row.OrderId, row.MessageId, attempt);
 

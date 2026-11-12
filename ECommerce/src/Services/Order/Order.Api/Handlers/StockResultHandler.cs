@@ -13,7 +13,7 @@ public enum ResultOutcome
     Ignored
 }
 
-public sealed class StockResultHandler(OrderDbContext db, ILogger<StockResultHandler> logger)
+public sealed class StockResultHandler(IOrderRepository repository, ILogger<StockResultHandler> logger)
 {
     public Task<ResultOutcome> HandleSucceededAsync(EventEnvelope<StockReservationSucceededPayload> envelope, CancellationToken ct) =>
         ApplyAsync(envelope.MessageId, envelope.EventType, envelope.CorrelationId, envelope.Payload.OrderId,
@@ -41,25 +41,16 @@ public sealed class StockResultHandler(OrderDbContext db, ILogger<StockResultHan
         Func<OrderEntity, (string RoutingKey, OutboxMessage Message)> buildEvent,
         CancellationToken ct)
     {
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await using var tx = await repository.BeginTransactionAsync(ct);
 
-        var now = DateTime.UtcNow;
-        var inboxRows = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"""
-             INSERT INTO inbox_messages (message_id, event_type, processed_at_utc)
-             VALUES ({messageId}, {eventType}, {now})
-             ON CONFLICT (message_id) DO NOTHING
-             """, ct);
-        if (inboxRows == 0)
+        if (!await repository.TryRegisterInboxMessageAsync(messageId, eventType, ct))
         {
             logger.LogInformation("Duplicate message {MessageId} ignored", messageId);
             return ResultOutcome.Duplicate;
         }
 
         // Satır kilidi: aynı sipariş için eşzamanlı sonuçlar sırayla işlenir.
-        var order = await db.Orders
-            .FromSqlInterpolated($"""SELECT * FROM orders WHERE "Id" = {orderId} FOR UPDATE""")
-            .SingleOrDefaultAsync(ct)
+        var order = await repository.GetForUpdateAsync(orderId, ct)
             ?? throw new InvalidOperationException($"Order {orderId} not found for message {messageId}.");
 
         if (!transition(order))
@@ -70,8 +61,8 @@ public sealed class StockResultHandler(OrderDbContext db, ILogger<StockResultHan
             return ResultOutcome.Ignored;
         }
 
-        db.OutboxMessages.Add(buildEvent(order).Message);
-        await db.SaveChangesAsync(ct);
+        repository.AddOutboxMessage(buildEvent(order).Message);
+        await repository.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
         logger.LogInformation("Order {OrderId} is now {Status} {MessageId} {CorrelationId}",

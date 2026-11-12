@@ -16,6 +16,7 @@ builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddHostedService<OutboxPublisher<OrderDbContext>>();
 builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection(RetentionOptions.SectionName));
 builder.Services.AddRetentionCleanup<OrderDbContext>(hasInbox: true);
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<StockResultHandler>();
 builder.Services.AddHostedService<StockResultConsumer>();
 builder.Services.AddReadinessChecks<OrderDbContext>();
