@@ -87,17 +87,34 @@ public abstract class RabbitMqConsumer(IOptions<RabbitMqOptions> options, ILogge
 
     private async Task OnReceivedAsync(IChannel channel, BasicDeliverEventArgs ea, CancellationToken ct)
     {
-        var messageId = ea.BasicProperties.MessageId;
+        var body = Encoding.UTF8.GetString(ea.Body.Span);
+        var (messageId, correlationId, eventType) = new ConsumedMessage(body).PeekMetadata();
+        var o = options.Value;
+
+        using var scope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["ServiceName"] = ServiceName,
+            ["CorrelationId"] = correlationId,
+            ["MessageId"] = messageId,
+            ["EventType"] = eventType
+        });
+
         try
         {
-            var body = Encoding.UTF8.GetString(ea.Body.Span);
-            await HandleAsync(new ConsumedMessage(body), ct);
+            await MessageRetry.ExecuteAsync(
+                attempt => HandleAsync(new ConsumedMessage(body, attempt), ct),
+                o.ConsumerMaxAttempts, TimeSpan.FromMilliseconds(o.ConsumerRetryBaseDelayMs),
+                (attempt, ex) => logger.LogWarning(ex, "Message handling failed on {Queue}; retrying. Attempt={Attempt}",
+                    QueueName, attempt),
+                ct);
             await channel.BasicAckAsync(ea.DeliveryTag, false, CancellationToken.None);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Message {MessageId} on {Queue} failed; sending to DLQ", messageId, QueueName);
+            logger.LogError(ex, "Message failed on {Queue}; sending to DLQ", QueueName);
             await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: false, CancellationToken.None);
         }
     }
+
+    private static readonly string ServiceName = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "unknown";
 }

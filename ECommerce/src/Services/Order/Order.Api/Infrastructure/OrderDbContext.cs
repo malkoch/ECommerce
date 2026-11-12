@@ -8,6 +8,7 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : D
 {
     public DbSet<Domain.Order> Orders => Set<Domain.Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -25,6 +26,15 @@ public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : D
         {
             e.ToTable("order_items");
             e.HasKey(x => x.Id);
+        });
+
+        b.Entity<InboxMessage>(e =>
+        {
+            e.ToTable("inbox_messages");
+            e.HasKey(x => x.MessageId);
+            e.Property(x => x.MessageId).HasColumnName("message_id");
+            e.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(100);
+            e.Property(x => x.ProcessedAtUtc).HasColumnName("processed_at_utc");
         });
 
         b.ConfigureOutbox();

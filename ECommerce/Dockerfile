@@ -6,6 +6,7 @@ ARG SERVICE
 ARG SERVICE_PATH
 WORKDIR /src
 COPY src/BuildingBlocks/Messaging/Messaging.csproj src/BuildingBlocks/Messaging/
+COPY src/BuildingBlocks/Observability/Observability.csproj src/BuildingBlocks/Observability/
 COPY ${SERVICE_PATH}/${SERVICE}.csproj ${SERVICE_PATH}/
 RUN dotnet restore ${SERVICE_PATH}/${SERVICE}.csproj
 COPY src/ src/

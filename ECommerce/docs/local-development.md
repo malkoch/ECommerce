@@ -113,6 +113,21 @@ TEST_POSTGRES_ADMIN="Host=localhost;Username=postgres;Password=<admin parolası>
   dotnet test tests/Stock.IntegrationTests
 ```
 
+## Notification hata senaryosu
+
+Mock sağlayıcıyı hata verecek şekilde başlat (3 deneme sonrası bildirim
+`Failed` olur ve mesaj `notification.order-events.dlq`'ya düşer):
+
+``` bash
+NOTIFICATION_FAIL_SMS=true docker compose up -d notification-api   # veya NOTIFICATION_FAIL_EMAIL=true
+```
+
+Sağlayıcıyı düzeltip (`docker compose up -d notification-api`) DLQ
+mesajını RabbitMQ UI'dan `ecommerce.events` exchange'ine tekrar
+yayınlarsan yalnızca `Failed` kanal yeniden denenir; `Sent` kanal
+tekrar gönderilmez. Alıcı adresi gerçek bir müşteri servisi olmadığı için
+`customerId`'den türetilen sahte değerdir.
+
 ## Sık karşılaşılan sorunlar
 
 -   **Port kullanımda:** `5432`, `5672` veya `15672` portlarını kullanan
@@ -131,3 +146,17 @@ TEST_POSTGRES_ADMIN="Host=localhost;Username=postgres;Password=<admin parolası>
 Bu Compose ayarı yalnızca lokal geliştirme içindir. Varsayılan
 kullanıcı/parolaları production'da kullanma; broker ve database
 portlarını internete açma.
+
+## Dayanıklılık ve gözlemlenebilirlik
+
+- **Consumer retry:** Geçici hatalarda mesaj `RabbitMq:ConsumerMaxAttempts` (varsayılan 3) kez, `ConsumerRetryBaseDelayMs` (500 ms) tabanlı üstel backoff ile denenir. Hâlâ başarısızsa DLQ'ya gider. `PermanentMessageException` ve `JsonException` (geçersiz payload, bilinmeyen event tipi, tükenmiş bildirim denemeleri) tekrar denenmeden doğrudan DLQ'ya gider.
+- **Retention:** `Messaging:Retention:RetentionDays` (7) ve `IntervalMinutes` (60). Order ve Stock'ta işlenmiş outbox ve inbox kayıtları süre dolunca silinir. Notification kendi `notifications` tablosunu kullandığı için temizlik uygulanmaz.
+- **Health:** `/health/live` yalnızca process'i, `/health/ready` PostgreSQL ve RabbitMQ'yu kontrol eder (RabbitMQ kapalıyken 503).
+- **Log:** JSON console log; `ServiceName`, `CorrelationId`, `MessageId`, `EventType` scope alanları içerir. HTTP isteğinde `X-Correlation-Id` başlığı okunur (yoksa üretilir), yanıta eklenir ve eventlerle servisler arası taşınır.
+- **Testler:** `dotnet test tests/Messaging.UnitTests` (retry kuralları).
+
+## Demo
+
+`./scripts/demo.sh` Docker'daki servislerde şu senaryoları çalıştırır: yeterli stok (Confirmed), yetersiz stok (Rejected), RabbitMQ kapalıyken sipariş kabulü ve açılınca işlenmesi (outbox). Duplicate mesaj ve Notification sağlayıcı hatası → DLQ → replay senaryoları yukarıdaki bölümlerde, entegrasyon testleri (`tests/*IntegrationTests`) ile birlikte anlatılmıştır.
+
+Temiz kurulum: `docker compose down -v && docker compose up -d --build` (servisler `/health/ready` 200 dönene kadar bekleyin).

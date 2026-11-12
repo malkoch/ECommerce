@@ -131,3 +131,15 @@ tut; `.env` dosyasını Git'e ekleme.
     hatalar DLQ'ya yönlendirilir.
 -   Loglarda `CorrelationId`, `OrderId` ve mesaj kimliği bulunur; hassas
     kişisel veri loglanmaz.
+
+## Hızlı başlangıç
+
+```bash
+cp .env.example .env
+docker compose up -d --build     # altyapı + 3 servis
+./scripts/demo.sh                # temel senaryoları çalıştır
+```
+
+Servisler: Order `5101`, Stock `5102`, Notification `5103` (`/health/live`, `/health/ready`).
+Tüm testler: `TEST_POSTGRES_ADMIN="Host=localhost;Username=postgres;Password=<admin>" dotnet test tests/<Proje>`.
+Durum: tüm fazlar tamamlandı; ayrıntı için `docs/implementation-plan.md`.

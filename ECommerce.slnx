@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/BuildingBlocks/">
     <Project Path="ECommerce/src/BuildingBlocks/Messaging/Messaging.csproj" />
+    <Project Path="ECommerce/src/BuildingBlocks/Observability/Observability.csproj" />
   </Folder>
   <Folder Name="/Services/">
     <Project Path="ECommerce/src/Services/Order/Order.Api/Order.Api.csproj" />
@@ -8,7 +9,10 @@
     <Project Path="ECommerce/src/Services/Notification/Notification.Api/Notification.Api.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="ECommerce/tests/Messaging.UnitTests/Messaging.UnitTests.csproj" />
     <Project Path="ECommerce/tests/Order.UnitTests/Order.UnitTests.csproj" />
+    <Project Path="ECommerce/tests/Order.IntegrationTests/Order.IntegrationTests.csproj" />
+    <Project Path="ECommerce/tests/Notification.IntegrationTests/Notification.IntegrationTests.csproj" />
     <Project Path="ECommerce/tests/Stock.IntegrationTests/Stock.IntegrationTests.csproj" />
   </Folder>
 </Solution>

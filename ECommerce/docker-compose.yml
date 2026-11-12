@@ -110,6 +110,8 @@ services:
       RabbitMq__Port: "5672"
       RabbitMq__User: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      Notification__Mock__FailEmail: ${NOTIFICATION_FAIL_EMAIL:-false}
+      Notification__Mock__FailSms: ${NOTIFICATION_FAIL_SMS:-false}
     ports:
       - "5103:8080"
     develop:

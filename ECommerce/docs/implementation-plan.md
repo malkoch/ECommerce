@@ -2,38 +2,38 @@
 
 ## Faz 0 --- Mimari kararlar
 
--   [ ] .NET hedef sürümünü seç (tercihen desteklenen LTS sürüm;
+-   [x] .NET hedef sürümünü seç (tercihen desteklenen LTS sürüm;
     ekip/Rider uyumluluğunu doğrula).
--   [ ] Servislerin ayrı PostgreSQL database ve kullanıcılarını belirle.
--   [ ] Exchange, queue, routing key ve event sözleşmelerini sabitle.
--   [ ] Sipariş durum makinesini tanımla.
--   [ ] Lokal portları ve environment variable adlarını belirle.
+-   [x] Servislerin ayrı PostgreSQL database ve kullanıcılarını belirle.
+-   [x] Exchange, queue, routing key ve event sözleşmelerini sabitle.
+-   [x] Sipariş durum makinesini tanımla.
+-   [x] Lokal portları ve environment variable adlarını belirle.
 
 **Çıkış kriteri:** `architecture.md` ve `event-contracts.md` ekipçe
 anlaşılır ve tutarlı.
 
 ## Faz 1 --- Lokal altyapı
 
--   [ ] Docker Compose ile PostgreSQL ve RabbitMQ başlat.
--   [ ] RabbitMQ Management UI erişimini doğrula.
--   [ ] Üç ayrı database ve kullanıcı oluştur.
--   [ ] Servislerin lokal `appsettings.Development.json` / User Secrets
+-   [x] Docker Compose ile PostgreSQL ve RabbitMQ başlat.
+-   [x] RabbitMQ Management UI erişimini doğrula.
+-   [x] Üç ayrı database ve kullanıcı oluştur.
+-   [x] Servislerin lokal `appsettings.Development.json` / User Secrets
     konfigürasyonunu hazırla.
--   [ ] Health check bağlantılarını doğrula.
+-   [x] Health check bağlantılarını doğrula.
 
 **Çıkış kriteri:** Lokal çalışan .NET uygulamaları kendi DB'lerine ve
 RabbitMQ'ya bağlanabiliyor.
 
 ## Faz 2 --- Order Service
 
--   [ ] Sipariş ve sipariş kalemi domain modellerini oluştur.
--   [ ] `POST /api/orders` ve `GET /api/orders/{id}` endpoint'lerini
+-   [x] Sipariş ve sipariş kalemi domain modellerini oluştur.
+-   [x] `POST /api/orders` ve `GET /api/orders/{id}` endpoint'lerini
     yaz.
--   [ ] EF Core PostgreSQL provider ve migration ekle.
--   [ ] Siparişi `PendingStock` durumunda kaydet.
--   [ ] Transactional Outbox tablosu ve publisher background service
+-   [x] EF Core PostgreSQL provider ve migration ekle.
+-   [x] Siparişi `PendingStock` durumunda kaydet.
+-   [x] Transactional Outbox tablosu ve publisher background service
     ekle.
--   [ ] API için unit ve integration test yaz.
+-   [x] API için unit ve integration test yaz.
 
 **Kabul kriterleri:** - Geçersiz ürün/quantity girdileri reddedilir. -
 Sipariş DB'ye kaydedilir. - `POST` çağrısı asenkron iş akışını başlatır
@@ -42,12 +42,12 @@ kaydı aynı DB transaction'ında korunur.
 
 ## Faz 3 --- Stock Service
 
--   [ ] Ürün/stok modeli ve başlangıç seed verisi oluştur.
--   [ ] `OrderCreated` consumer'ı yaz.
--   [ ] Stok rezervasyonunu atomik DB transaction'ında yap.
--   [ ] Aynı `orderId` için ikinci rezervasyonu engelle.
--   [ ] Başarılı/başarısız sonuç için outbox event üret.
--   [ ] Inbox/idempotency mekanizmasını ekle.
+-   [x] Ürün/stok modeli ve başlangıç seed verisi oluştur.
+-   [x] `OrderCreated` consumer'ı yaz.
+-   [x] Stok rezervasyonunu atomik DB transaction'ında yap.
+-   [x] Aynı `orderId` için ikinci rezervasyonu engelle.
+-   [x] Başarılı/başarısız sonuç için outbox event üret.
+-   [x] Inbox/idempotency mekanizmasını ekle.
 
 **Kabul kriterleri:** - Yeterli stok varsa miktar yalnızca bir kez
 düşer. - Yetersiz stokta stok negatif olmaz. - Bir siparişteki
@@ -56,36 +56,36 @@ teslim edilirse ikinci kez stok azaltılmaz.
 
 ## Faz 4 --- Order sonuç consumer'ı
 
--   [ ] Stock sonucu event'lerini tüket.
--   [ ] Sipariş durumunu `Confirmed` veya `Rejected` yap.
--   [ ] `OrderConfirmed` / `OrderRejected` event'lerini outbox'a yaz.
--   [ ] Aynı sonuç event'i tekrar geldiğinde nihai durum tutarlı kalır.
+-   [x] Stock sonucu event'lerini tüket.
+-   [x] Sipariş durumunu `Confirmed` veya `Rejected` yap.
+-   [x] `OrderConfirmed` / `OrderRejected` event'lerini outbox'a yaz.
+-   [x] Aynı sonuç event'i tekrar geldiğinde nihai durum tutarlı kalır.
 
 **Kabul kriteri:** Sipariş akışı uçtan uca doğru durumla tamamlanır.
 
 ## Faz 5 --- Notification Service
 
--   [ ] Sipariş sonucu event'lerini tüket.
--   [ ] İlk aşamada `IEmailSender` ve `ISmsSender` arayüzlerinin
+-   [x] Sipariş sonucu event'lerini tüket.
+-   [x] İlk aşamada `IEmailSender` ve `ISmsSender` arayüzlerinin
     mock/log implementasyonunu kullan.
--   [ ] Notification DB'ye gönderim kaydı yaz.
--   [ ] Sağlayıcı hatalarında sınırlı retry ve başarısız durum yönetimi
+-   [x] Notification DB'ye gönderim kaydı yaz.
+-   [x] Sağlayıcı hatalarında sınırlı retry ve başarısız durum yönetimi
     ekle.
--   [ ] Aynı event için mükerrer bildirim gönderimini önle.
+-   [x] Aynı event için mükerrer bildirim gönderimini önle.
 
 **Kabul kriteri:** Sipariş sonucu notification DB'de loglanır; mock
 gönderim çağrısı izlenebilir.
 
 ## Faz 6 --- Dayanıklılık ve kalite
 
--   [ ] Retry/backoff ve DLQ.
--   [ ] Publisher confirms.
--   [ ] Inbox/Outbox temizleme ve saklama politikası.
--   [ ] Correlation ID propagation.
--   [ ] Yapılandırılmış log ve health checks.
--   [ ] API, consumer ve DB integration testleri.
--   [ ] Docker Compose README ve temiz kurulum testi.
--   [ ] Hata senaryolarını demo et.
+-   [x] Retry/backoff ve DLQ.
+-   [x] Publisher confirms.
+-   [x] Inbox/Outbox temizleme ve saklama politikası.
+-   [x] Correlation ID propagation.
+-   [x] Yapılandırılmış log ve health checks.
+-   [x] API, consumer ve DB integration testleri.
+-   [x] Docker Compose README ve temiz kurulum testi.
+-   [x] Hata senaryolarını demo et.
 
 ## Demo senaryoları
 

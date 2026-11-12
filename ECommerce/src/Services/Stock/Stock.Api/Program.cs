@@ -1,10 +1,12 @@
 using Messaging;
+using Observability;
 using Messaging.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Stock.Api.Infrastructure;
 using Stock.Api.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddJsonLogging();
 
 builder.Services.AddDbContext<StockDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("StockDb")));
@@ -13,7 +15,9 @@ builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<ReserveStockHandler>();
 builder.Services.AddHostedService<OrderCreatedConsumer>();
 builder.Services.AddHostedService<OutboxPublisher<StockDbContext>>();
-builder.Services.AddHealthChecks();
+builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection(RetentionOptions.SectionName));
+builder.Services.AddRetentionCleanup<StockDbContext>(hasInbox: true);
+builder.Services.AddReadinessChecks<StockDbContext>();
 
 var app = builder.Build();
 
@@ -23,7 +27,8 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
     await scope.ServiceProvider.GetRequiredService<StockDbContext>().Database.MigrateAsync();
 }
 
-app.MapHealthChecks("/health/live");
+app.UseCorrelationId("stock-api");
+app.MapServiceHealth();
 
 app.Run();
 

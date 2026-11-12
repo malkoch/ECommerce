@@ -22,7 +22,7 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
         var order = envelope.Payload;
         if (order.OrderId == Guid.Empty || order.Items is not { Count: > 0 } || order.Items.Any(i => i.Quantity <= 0))
         {
-            throw new InvalidOperationException($"Invalid OrderCreated payload for message {envelope.MessageId}.");
+            throw new PermanentMessageException($"Invalid OrderCreated payload for message {envelope.MessageId}.");
         }
 
         // Aynı ürün birden fazla kalemde gelirse toplanır; sabit sırada kilitleyerek deadlock riski azaltılır.

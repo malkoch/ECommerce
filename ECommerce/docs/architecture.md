@@ -13,7 +13,7 @@
                           rezervasyon             StockReservations,
                                                   Outbox, Inbox
 
-  Notification Service    E-posta/SMS gönderimi   Notifications, Inbox
+  Notification Service    E-posta/SMS gönderimi   Notifications (message_id+channel unique)
                           ve gönderim geçmişi     
   -----------------------------------------------------------------------
 

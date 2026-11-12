@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Messaging\Messaging.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Observability\Observability.csproj" />
   </ItemGroup>
 
 </Project>
