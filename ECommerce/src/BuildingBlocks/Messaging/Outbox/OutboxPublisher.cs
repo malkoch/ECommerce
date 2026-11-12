@@ -47,10 +47,17 @@ public sealed class OutboxPublisher<TContext>(
         await using var scope = scopes.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TContext>();
 
+        // Row locks are held until commit, so concurrent publishers skip rows claimed by another instance.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
         var batch = await db.OutboxMessages
-            .Where(m => m.ProcessedAtUtc == null)
-            .OrderBy(m => m.CreatedAtUtc)
-            .Take(BatchSize)
+            .FromSqlInterpolated($"""
+                SELECT * FROM outbox_messages
+                WHERE "ProcessedAtUtc" IS NULL
+                ORDER BY "CreatedAtUtc"
+                LIMIT {BatchSize}
+                FOR UPDATE SKIP LOCKED
+                """)
             .ToListAsync(ct);
 
         foreach (var message in batch)
@@ -69,12 +76,14 @@ public sealed class OutboxPublisher<TContext>(
             {
                 message.LastError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
                 await db.SaveChangesAsync(CancellationToken.None);
+                await tx.CommitAsync(CancellationToken.None);
                 throw;
             }
 
             await db.SaveChangesAsync(ct);
         }
 
+        await tx.CommitAsync(ct);
         return batch.Count;
     }
 }
