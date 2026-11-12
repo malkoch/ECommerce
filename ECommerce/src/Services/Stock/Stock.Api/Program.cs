@@ -2,6 +2,7 @@ using Messaging;
 using Observability;
 using Messaging.Outbox;
 using Microsoft.EntityFrameworkCore;
+using Stock.Api.Endpoints;
 using Stock.Api.Infrastructure;
 using Stock.Api.Handlers;
 
@@ -30,6 +31,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", true))
 
 app.UseCorrelationId("stock-api");
 app.MapServiceHealth();
+app.MapStockEndpoints();
 
 app.Run();
 

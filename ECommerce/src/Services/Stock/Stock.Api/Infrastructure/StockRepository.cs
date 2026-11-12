@@ -20,6 +20,11 @@ public interface IStockRepository
     Task MarkReservationFailedAsync(Guid reservationId, string reasonCode, CancellationToken ct);
     Task MarkReservationSucceededAsync(Guid reservationId, IEnumerable<(Guid ProductId, int Quantity)> items, CancellationToken ct);
 
+    Task<string?> GetProductNameAsync(Guid productId, CancellationToken ct);
+    Task AddProductAsync(Guid productId, string name, CancellationToken ct);
+    Task AddUnitsAsync(Guid productId, int quantity, CancellationToken ct);
+    Task<(int Available, int Reserved)> GetStockCountsAsync(Guid productId, CancellationToken ct);
+
     void AddOutboxMessage(OutboxMessage message);
     Task SaveChangesAsync(CancellationToken ct);
 }
@@ -84,6 +89,32 @@ public sealed class StockRepository(StockDbContext db) : IStockRepository
 
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE stock_reservations SET status = {ReservationStatus.Succeeded} WHERE id = {reservationId}", ct);
+    }
+
+    public Task<string?> GetProductNameAsync(Guid productId, CancellationToken ct) =>
+        db.StockItems.AsNoTracking().Where(x => x.ProductId == productId).Select(x => x.Name).FirstOrDefaultAsync(ct);
+
+    public async Task AddProductAsync(Guid productId, string name, CancellationToken ct)
+    {
+        db.StockItems.Add(new StockItem { ProductId = productId, Name = name });
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task AddUnitsAsync(Guid productId, int quantity, CancellationToken ct)
+    {
+        db.StockUnits.AddRange(Enumerable.Range(0, quantity)
+            .Select(_ => new StockUnit { Id = Guid.NewGuid(), ProductId = productId }));
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task<(int Available, int Reserved)> GetStockCountsAsync(Guid productId, CancellationToken ct)
+    {
+        var counts = await db.StockUnits.AsNoTracking()
+            .Where(u => u.ProductId == productId)
+            .GroupBy(u => u.ReservationId == null)
+            .Select(g => new { Free = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        return (counts.FirstOrDefault(c => c.Free)?.Count ?? 0, counts.FirstOrDefault(c => !c.Free)?.Count ?? 0);
     }
 
     public void AddOutboxMessage(OutboxMessage message) => db.OutboxMessages.Add(message);
