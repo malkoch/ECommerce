@@ -47,11 +47,13 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             return ReservationOutcome.Duplicate;
         }
 
+        // Sıcak ürünlerde satır kilidi commit'e kadar tutulur; bu yüzden stok güncellemeleri transaction'ın
+        // en sonuna bırakılır, tüm hazırlık yazımları (rezervasyon, kalemler, outbox) kilitten önce yapılır.
         var reservationId = Guid.NewGuid();
         var reservationRows = await db.Database.ExecuteSqlInterpolatedAsync(
             $"""
              INSERT INTO stock_reservations (id, order_id, status, created_at_utc)
-             VALUES ({reservationId}, {order.OrderId}, {ReservationStatus.Pending}, {now})
+             VALUES ({reservationId}, {order.OrderId}, {ReservationStatus.Succeeded}, {now})
              ON CONFLICT (order_id) DO NOTHING
              """, ct);
         if (reservationRows == 0)
@@ -63,6 +65,18 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
         }
 
         await tx.CreateSavepointAsync("reserve", ct);
+
+        foreach (var (productId, quantity) in items)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"INSERT INTO stock_reservation_items (reservation_id, product_id, quantity) VALUES ({reservationId}, {productId}, {quantity})",
+                ct);
+        }
+
+        var succeeded = EventEnvelope<StockReservationSucceededPayload>.Create(EventTypes.StockReservationSucceeded,
+            new StockReservationSucceededPayload(order.OrderId, reservationId), envelope.CorrelationId);
+        db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(succeeded, Topology.RoutingKeys.StockReservationSucceeded));
+        await db.SaveChangesAsync(ct);
 
         var failedProducts = new List<Guid>();
         foreach (var (productId, quantity) in items)
@@ -76,13 +90,15 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             if (updated == 0)
             {
                 failedProducts.Add(productId);
+                break;
             }
         }
 
         if (failedProducts.Count > 0)
         {
-            // Kısmi düşüm kalmaması için bu siparişin tüm stok güncellemeleri geri alınır.
+            // Savepoint'e dönmek stok düşümlerini, kalemleri ve başarı olayını geri alır; kilitler hemen bırakılır.
             await tx.RollbackToSavepointAsync("reserve", ct);
+            db.ChangeTracker.Clear();
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"UPDATE stock_reservations SET status = {ReservationStatus.Failed}, reason_code = {InsufficientStock} WHERE id = {reservationId}",
                 ct);
@@ -90,25 +106,9 @@ public sealed class ReserveStockHandler(StockDbContext db, ILogger<ReserveStockH
             var failed = EventEnvelope<StockReservationFailedPayload>.Create(EventTypes.StockReservationFailed,
                 new StockReservationFailedPayload(order.OrderId, InsufficientStock, failedProducts), envelope.CorrelationId);
             db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(failed, Topology.RoutingKeys.StockReservationFailed));
-        }
-        else
-        {
-            foreach (var (productId, quantity) in items)
-            {
-                await db.Database.ExecuteSqlInterpolatedAsync(
-                    $"INSERT INTO stock_reservation_items (reservation_id, product_id, quantity) VALUES ({reservationId}, {productId}, {quantity})",
-                    ct);
-            }
-
-            await db.Database.ExecuteSqlInterpolatedAsync(
-                $"UPDATE stock_reservations SET status = {ReservationStatus.Succeeded} WHERE id = {reservationId}", ct);
-
-            var succeeded = EventEnvelope<StockReservationSucceededPayload>.Create(EventTypes.StockReservationSucceeded,
-                new StockReservationSucceededPayload(order.OrderId, reservationId), envelope.CorrelationId);
-            db.OutboxMessages.Add(OutboxModelBuilderExtensions.CreateOutboxMessage(succeeded, Topology.RoutingKeys.StockReservationSucceeded));
+            await db.SaveChangesAsync(ct);
         }
 
-        await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
         var outcome = failedProducts.Count > 0 ? ReservationOutcome.Failed : ReservationOutcome.Succeeded;
