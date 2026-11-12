@@ -12,6 +12,8 @@ public sealed record CreateOrderRequest(Guid CustomerId, List<CreateOrderItemReq
 
 public sealed record OrderItemResponse(Guid ProductId, int Quantity);
 
+public sealed record CreateOrderResponse(Guid OrderId, string Status);
+
 public sealed record OrderResponse(
     Guid OrderId, Guid CustomerId, string Status, DateTime CreatedAtUtc, DateTime UpdatedAtUtc,
     IReadOnlyList<OrderItemResponse> Items);
@@ -62,7 +64,7 @@ public static class OrderEndpoints
 
     public static void MapOrderEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/orders");
+        var group = app.MapGroup("/api/orders").WithTags("Orders");
 
         group.MapPost("/", async (CreateOrderRequest? request, HttpContext http, IOrderRepository repository, CancellationToken ct) =>
         {
@@ -85,8 +87,14 @@ public static class OrderEndpoints
             await repository.SaveChangesAsync(ct);
 
             http.Response.Headers[CorrelationHeader] = correlationId.ToString();
-            return Results.Accepted($"/api/orders/{order.Id}", new { orderId = order.Id, status = order.Status.ToString() });
-        });
+            return Results.Accepted($"/api/orders/{order.Id}", new CreateOrderResponse(order.Id, order.Status.ToString()));
+        })
+        .WithName("CreateOrder")
+        .WithSummary("Creates an order")
+        .WithDescription("Persists the order and publishes an OrderCreated event. Optional X-Correlation-Id header (GUID) is propagated.")
+        .Accepts<CreateOrderRequest>("application/json")
+        .Produces<CreateOrderResponse>(StatusCodes.Status202Accepted)
+        .ProducesValidationProblem();
 
         group.MapGet("/{orderId:guid}", async (Guid orderId, IOrderRepository repository, CancellationToken ct) =>
         {
@@ -97,6 +105,10 @@ public static class OrderEndpoints
                 : Results.Ok(new OrderResponse(order.Id, order.CustomerId, order.Status.ToString(),
                     order.CreatedAtUtc, order.UpdatedAtUtc,
                     order.Items.Select(i => new OrderItemResponse(i.ProductId, i.Quantity)).ToList()));
-        });
+        })
+        .WithName("GetOrder")
+        .WithSummary("Gets an order by id")
+        .Produces<OrderResponse>()
+        .Produces(StatusCodes.Status404NotFound);
     }
 }

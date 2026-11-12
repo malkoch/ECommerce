@@ -4,6 +4,8 @@ namespace Stock.Api.Endpoints;
 
 public sealed record CreateProductRequest(string? Name);
 
+public sealed record CreateProductResponse(Guid ProductId, string Name);
+
 public sealed record AddStockRequest(int Quantity);
 
 public sealed record StockLevelResponse(Guid ProductId, string Name, int Available, int Reserved, int Total);
@@ -52,7 +54,7 @@ public static class StockEndpoints
 {
     public static void MapStockEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/products");
+        var group = app.MapGroup("/api/products").WithTags("Stock");
 
         group.MapPost("/", async (CreateProductRequest? request, IStockRepository repository, CancellationToken ct) =>
         {
@@ -65,8 +67,13 @@ public static class StockEndpoints
             var id = Guid.NewGuid();
             var name = request!.Name!.Trim();
             await repository.AddProductAsync(id, name, ct);
-            return Results.Created($"/api/products/{id}/stock", new { productId = id, name });
-        });
+            return Results.Created($"/api/products/{id}/stock", new CreateProductResponse(id, name));
+        })
+        .WithName("CreateProduct")
+        .WithSummary("Creates a product")
+        .Accepts<CreateProductRequest>("application/json")
+        .Produces<CreateProductResponse>(StatusCodes.Status201Created)
+        .ProducesValidationProblem();
 
         group.MapPost("/{productId:guid}/stock", async (Guid productId, AddStockRequest? request, IStockRepository repository, CancellationToken ct) =>
         {
@@ -84,7 +91,13 @@ public static class StockEndpoints
 
             await repository.AddUnitsAsync(productId, request!.Quantity, ct);
             return Results.Ok(await BuildLevelAsync(repository, productId, name, ct));
-        });
+        })
+        .WithName("AddStock")
+        .WithSummary("Adds stock units to a product")
+        .Accepts<AddStockRequest>("application/json")
+        .Produces<StockLevelResponse>()
+        .Produces(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem();
 
         group.MapGet("/{productId:guid}/stock", async (Guid productId, IStockRepository repository, CancellationToken ct) =>
         {
@@ -92,7 +105,11 @@ public static class StockEndpoints
             return name is null
                 ? Results.NotFound()
                 : Results.Ok(await BuildLevelAsync(repository, productId, name, ct));
-        });
+        })
+        .WithName("GetStock")
+        .WithSummary("Gets the stock level of a product")
+        .Produces<StockLevelResponse>()
+        .Produces(StatusCodes.Status404NotFound);
     }
 
     private static async Task<StockLevelResponse> BuildLevelAsync(
