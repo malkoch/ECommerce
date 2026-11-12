@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/BuildingBlocks/">
+    <Project Path="ECommerce/src/BuildingBlocks/Messaging/Messaging.csproj" />
+  </Folder>
+  <Folder Name="/Services/">
+    <Project Path="ECommerce/src/Services/Order/Order.Api/Order.Api.csproj" />
+    <Project Path="ECommerce/src/Services/Stock/Stock.Api/Stock.Api.csproj" />
+    <Project Path="ECommerce/src/Services/Notification/Notification.Api/Notification.Api.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="ECommerce/tests/Order.UnitTests/Order.UnitTests.csproj" />
+    <Project Path="ECommerce/tests/Stock.IntegrationTests/Stock.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

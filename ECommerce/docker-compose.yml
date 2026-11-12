@@ -1,0 +1,122 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecommerce-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD}
+      STOCK_DB_PASSWORD: ${STOCK_DB_PASSWORD}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ecommerce-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  order-api:
+    build:
+      context: .
+      args:
+        SERVICE: Order.Api
+        SERVICE_PATH: src/Services/Order/Order.Api
+    image: ecommerce/order-api:dev
+    container_name: ecommerce-order-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__OrderDb: Host=postgres;Port=5432;Database=OrderDb;Username=order_user;Password=${ORDER_DB_PASSWORD}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__User: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5101:8080"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+
+  stock-api:
+    build:
+      context: .
+      args:
+        SERVICE: Stock.Api
+        SERVICE_PATH: src/Services/Stock/Stock.Api
+    image: ecommerce/stock-api:dev
+    container_name: ecommerce-stock-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__StockDb: Host=postgres;Port=5432;Database=StockDb;Username=stock_user;Password=${STOCK_DB_PASSWORD}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__User: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5102:8080"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+
+  notification-api:
+    build:
+      context: .
+      args:
+        SERVICE: Notification.Api
+        SERVICE_PATH: src/Services/Notification/Notification.Api
+    image: ecommerce/notification-api:dev
+    container_name: ecommerce-notification-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__NotificationDb: Host=postgres;Port=5432;Database=NotificationDb;Username=notification_user;Password=${NOTIFICATION_DB_PASSWORD}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__User: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5103:8080"
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
