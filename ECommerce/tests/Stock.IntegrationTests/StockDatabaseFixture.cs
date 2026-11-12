@@ -41,7 +41,8 @@ public sealed class StockDatabaseFixture : IAsyncLifetime
     {
         await using var db = CreateContext();
         var id = Guid.NewGuid();
-        db.StockItems.Add(new StockItem { ProductId = id, Name = "Test", AvailableQuantity = quantity });
+        db.StockItems.Add(new StockItem { ProductId = id, Name = "Test" });
+        db.StockUnits.AddRange(Enumerable.Range(0, quantity).Select(_ => new StockUnit { Id = Guid.NewGuid(), ProductId = id }));
         await db.SaveChangesAsync();
         return id;
     }
@@ -49,7 +50,7 @@ public sealed class StockDatabaseFixture : IAsyncLifetime
     public async Task<int> GetQuantityAsync(Guid productId)
     {
         await using var db = CreateContext();
-        return await db.StockItems.Where(s => s.ProductId == productId).Select(s => s.AvailableQuantity).SingleAsync();
+        return await db.StockUnits.CountAsync(u => u.ProductId == productId && u.ReservationId == null);
     }
 
     public async Task DisposeAsync()

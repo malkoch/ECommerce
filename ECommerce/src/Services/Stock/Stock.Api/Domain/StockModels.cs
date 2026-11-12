@@ -4,7 +4,14 @@ public sealed class StockItem
 {
     public Guid ProductId { get; set; }
     public string Name { get; set; } = default!;
-    public int AvailableQuantity { get; set; }
+}
+
+/// <summary>Stoktaki her fiziksel birim bir satırdır; ReservationId null ise birim müsaittir.</summary>
+public sealed class StockUnit
+{
+    public Guid Id { get; set; }
+    public Guid ProductId { get; set; }
+    public Guid? ReservationId { get; set; }
 }
 
 public static class ReservationStatus

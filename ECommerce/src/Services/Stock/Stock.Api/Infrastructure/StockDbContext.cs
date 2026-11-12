@@ -11,6 +11,7 @@ public sealed class StockDbContext(DbContextOptions<StockDbContext> options) : D
     public static readonly Guid HeadphonesId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     public DbSet<StockItem> StockItems => Set<StockItem>();
+    public DbSet<StockUnit> StockUnits => Set<StockUnit>();
     public DbSet<StockReservation> Reservations => Set<StockReservation>();
     public DbSet<StockReservationItem> ReservationItems => Set<StockReservationItem>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
@@ -20,15 +21,25 @@ public sealed class StockDbContext(DbContextOptions<StockDbContext> options) : D
     {
         b.Entity<StockItem>(e =>
         {
-            e.ToTable("stock_items", t => t.HasCheckConstraint("ck_stock_items_available_non_negative", "available_quantity >= 0"));
+            e.ToTable("stock_items");
             e.HasKey(x => x.ProductId);
             e.Property(x => x.ProductId).HasColumnName("product_id");
             e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200);
-            e.Property(x => x.AvailableQuantity).HasColumnName("available_quantity");
             e.HasData(
-                new StockItem { ProductId = LaptopId, Name = "Laptop", AvailableQuantity = 50 },
-                new StockItem { ProductId = PhoneId, Name = "Phone", AvailableQuantity = 100 },
-                new StockItem { ProductId = HeadphonesId, Name = "Headphones", AvailableQuantity = 5 });
+                new StockItem { ProductId = LaptopId, Name = "Laptop" },
+                new StockItem { ProductId = PhoneId, Name = "Phone" },
+                new StockItem { ProductId = HeadphonesId, Name = "Headphones" });
+        });
+
+        b.Entity<StockUnit>(e =>
+        {
+            e.ToTable("stock_units");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.ProductId).HasColumnName("product_id");
+            e.Property(x => x.ReservationId).HasColumnName("reservation_id");
+            e.HasIndex(x => x.ProductId).HasFilter("reservation_id IS NULL").HasDatabaseName("ix_stock_units_available");
+            e.HasIndex(x => x.ReservationId);
         });
 
         b.Entity<StockReservation>(e =>

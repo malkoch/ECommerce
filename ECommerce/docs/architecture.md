@@ -119,19 +119,26 @@ Inbox kaydı ve iş verisi aynı yerel DB transaction'ında yazılmalıdır.
 
 ### Stok tutarlılığı
 
-Stok azaltma işlemi atomik olmalıdır. Örneğin koşullu SQL güncellemesi:
+Stok tek bir sayaç yerine birim bazlı tutulur: `stock_units` tablosunda
+her fiziksel birim bir satırdır (`reservation_id` NULL ise müsait). Rezervasyon,
+gereken sayıda müsait satırı atomik olarak sahiplenir:
 
 ``` sql
-UPDATE stock_items
-SET available_quantity = available_quantity - @quantity
-WHERE product_id = @productId
-  AND available_quantity >= @quantity;
+UPDATE stock_units SET reservation_id = @reservationId
+WHERE id IN (
+    SELECT id FROM stock_units
+    WHERE product_id = @productId AND reservation_id IS NULL
+    LIMIT @quantity
+    FOR UPDATE SKIP LOCKED);
 ```
 
-Etkilenen satır sayısı `1` ise rezervasyon başarılıdır; `0` ise stok
-yetersizdir. Bir siparişte birden fazla ürün varsa tüm satırlar tek
-Stock DB transaction'ında işlenmelidir. Kısmi rezervasyon oluşursa
-transaction rollback edilmelidir.
+Etkilenen satır sayısı `quantity` ise rezervasyon başarılıdır. `SKIP LOCKED`
+sayesinde aynı sıcak ürüne gelen eşzamanlı siparişler birbirini beklemez ve
+deadlock oluşmaz. Eksik kalınırsa (satırlar başka bir transaction'da kilitli
+olabilir) kısa süre sonra tekrar denenir; kilitliler dahil müsait toplam
+yetersizse sipariş başarısız olur. Bir siparişte birden fazla ürün varsa tüm
+kalemler tek Stock DB transaction'ında işlenir; kısmi rezervasyon olursa
+savepoint'e geri dönülür.
 
 ## 5. Hata senaryoları
 

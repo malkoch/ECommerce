@@ -106,4 +106,28 @@ public class ReserveStockHandlerTests(StockDatabaseFixture fixture) : IClassFixt
         Assert.Equal(7, outcomes.Count(o => o == ReservationOutcome.Failed));
         Assert.Equal(0, await fixture.GetQuantityAsync(product));
     }
+
+    [Fact]
+    public async Task HotProduct_ManyConcurrentOrders_ExactlyStockIsSold()
+    {
+        var product = await fixture.AddProductAsync(100);
+
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 60).Select(_ => Task.Run(() => HandleAsync(Order((product, 2))))));
+
+        Assert.Equal(50, outcomes.Count(o => o == ReservationOutcome.Succeeded));
+        Assert.Equal(10, outcomes.Count(o => o == ReservationOutcome.Failed));
+        Assert.Equal(0, await fixture.GetQuantityAsync(product));
+    }
+
+    [Fact]
+    public async Task SameMessageDeliveredInParallel_ReservesOnce()
+    {
+        var product = await fixture.AddProductAsync(10);
+        var order = Order((product, 3));
+
+        var outcomes = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => Task.Run(() => HandleAsync(order))));
+
+        Assert.Equal(1, outcomes.Count(o => o == ReservationOutcome.Succeeded));
+        Assert.Equal(7, await fixture.GetQuantityAsync(product));
+    }
 }

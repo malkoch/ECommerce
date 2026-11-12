@@ -94,10 +94,6 @@ namespace Stock.Api.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("product_id");
 
-                    b.Property<int>("AvailableQuantity")
-                        .HasColumnType("integer")
-                        .HasColumnName("available_quantity");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -106,28 +102,22 @@ namespace Stock.Api.Infrastructure.Migrations
 
                     b.HasKey("ProductId");
 
-                    b.ToTable("stock_items", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_stock_items_available_non_negative", "available_quantity >= 0");
-                        });
+                    b.ToTable("stock_items", (string)null);
 
                     b.HasData(
                         new
                         {
                             ProductId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            AvailableQuantity = 50,
                             Name = "Laptop"
                         },
                         new
                         {
                             ProductId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            AvailableQuantity = 100,
                             Name = "Phone"
                         },
                         new
                         {
                             ProductId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            AvailableQuantity = 5,
                             Name = "Headphones"
                         });
                 });
@@ -183,6 +173,32 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.HasKey("ReservationId", "ProductId");
 
                     b.ToTable("stock_reservation_items", (string)null);
+                });
+
+            modelBuilder.Entity("Stock.Api.Domain.StockUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("product_id");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reservation_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId")
+                        .HasDatabaseName("ix_stock_units_available")
+                        .HasFilter("reservation_id IS NULL");
+
+                    b.HasIndex("ReservationId");
+
+                    b.ToTable("stock_units", (string)null);
                 });
 
             modelBuilder.Entity("Stock.Api.Domain.StockReservationItem", b =>
