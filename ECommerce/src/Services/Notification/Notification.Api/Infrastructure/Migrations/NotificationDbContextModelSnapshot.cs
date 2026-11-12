@@ -22,7 +22,7 @@ namespace Notification.Api.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Notification.Api.Domain.NotificationRecord", b =>
+            modelBuilder.Entity("Notification.Api.Domain.Entities.NotificationRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

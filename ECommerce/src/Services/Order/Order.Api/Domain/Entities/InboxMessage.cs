@@ -1,4 +1,4 @@
-namespace Order.Api.Infrastructure;
+namespace Order.Api.Domain.Entities;
 
 public sealed class InboxMessage
 {

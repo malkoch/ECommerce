@@ -1,0 +1,9 @@
+global using Messaging.Contracts;
+global using Messaging.Exceptions;
+global using Messaging.Options;
+global using Order.Api.Domain.Entities;
+global using Order.Api.Domain.Enums;
+global using Order.Api.Endpoints.Requests;
+global using Order.Api.Endpoints.Responses;
+global using Order.Api.Endpoints.Validators;
+global using Order.Api.Handlers.Results;

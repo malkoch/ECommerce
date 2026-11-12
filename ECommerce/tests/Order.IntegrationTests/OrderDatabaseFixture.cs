@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Order.Api.Domain;
 using Order.Api.Infrastructure;
-using OrderEntity = Order.Api.Domain.Order;
+using OrderEntity = Order.Api.Domain.Entities.Order;
 
 namespace Order.IntegrationTests;
 

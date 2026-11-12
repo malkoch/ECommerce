@@ -1,4 +1,4 @@
-namespace Order.Api.Domain;
+namespace Order.Api.Domain.Entities;
 
 public sealed class OrderItem
 {

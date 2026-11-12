@@ -7,16 +7,6 @@ using Notification.Api.Senders;
 
 namespace Notification.Api.Handlers;
 
-public sealed class RetryOptions
-{
-    public const string SectionName = "Notification:Retry";
-
-    public int MaxAttempts { get; set; } = 3;
-    public int BaseDelayMs { get; set; } = 500;
-}
-
-public sealed class NotificationDeliveryException(string message) : PermanentMessageException(message);
-
 public sealed class SendNotificationHandler(
     INotificationRepository repository, IEmailSender email, ISmsSender sms, IOptions<RetryOptions> retry,
     ILogger<SendNotificationHandler> logger)
@@ -119,7 +109,7 @@ public sealed class SendNotificationHandler(
     }
 
     private static (string Subject, string Body) BuildContent(OrderResultNotification n) =>
-        n.EventType == Messaging.EventTypes.OrderConfirmed
+        n.EventType == EventTypes.OrderConfirmed
             ? ("Siparişiniz onaylandı", $"{n.OrderId} numaralı siparişiniz onaylandı.")
             : ("Siparişiniz reddedildi",
                 $"{n.OrderId} numaralı siparişiniz reddedildi. Neden: {(n.ReasonCode == "INSUFFICIENT_STOCK" ? "yetersiz stok" : n.ReasonCode)}.");

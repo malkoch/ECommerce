@@ -65,7 +65,7 @@ namespace Order.Api.Infrastructure.Migrations
                     b.ToTable("outbox_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Order.Api.Domain.Order", b =>
+            modelBuilder.Entity("Order.Api.Domain.Entities.Order", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -90,7 +90,7 @@ namespace Order.Api.Infrastructure.Migrations
                     b.ToTable("orders", (string)null);
                 });
 
-            modelBuilder.Entity("Order.Api.Domain.OrderItem", b =>
+            modelBuilder.Entity("Order.Api.Domain.Entities.OrderItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -112,7 +112,7 @@ namespace Order.Api.Infrastructure.Migrations
                     b.ToTable("order_items", (string)null);
                 });
 
-            modelBuilder.Entity("Order.Api.Infrastructure.InboxMessage", b =>
+            modelBuilder.Entity("Order.Api.Domain.Entities.InboxMessage", b =>
                 {
                     b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
@@ -134,16 +134,16 @@ namespace Order.Api.Infrastructure.Migrations
                     b.ToTable("inbox_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Order.Api.Domain.OrderItem", b =>
+            modelBuilder.Entity("Order.Api.Domain.Entities.OrderItem", b =>
                 {
-                    b.HasOne("Order.Api.Domain.Order", null)
+                    b.HasOne("Order.Api.Domain.Entities.Order", null)
                         .WithMany("Items")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Order.Api.Domain.Order", b =>
+            modelBuilder.Entity("Order.Api.Domain.Entities.Order", b =>
                 {
                     b.Navigation("Items");
                 });

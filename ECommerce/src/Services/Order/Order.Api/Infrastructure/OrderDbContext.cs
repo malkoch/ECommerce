@@ -1,19 +1,19 @@
 using Messaging.Outbox;
 using Microsoft.EntityFrameworkCore;
-using Order.Api.Domain;
+using OrderEntity = Order.Api.Domain.Entities.Order;
 
 namespace Order.Api.Infrastructure;
 
 public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : DbContext(options), IOutboxDbContext
 {
-    public DbSet<Domain.Order> Orders => Set<Domain.Order>();
+    public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        b.Entity<Domain.Order>(e =>
+        b.Entity<OrderEntity>(e =>
         {
             e.ToTable("orders");
             e.HasKey(x => x.Id);

@@ -7,24 +7,6 @@ using Messaging.Outbox;
 
 namespace Messaging;
 
-public sealed class RetentionOptions
-{
-    public const string SectionName = "Messaging:Retention";
-
-    /// <summary>İşlenmiş outbox ve inbox kayıtlarının saklanma süresi. Inbox bu süreden sonra silindiği için bu süre, broker'ın tekrar teslim penceresinden uzun olmalıdır.</summary>
-    public int RetentionDays { get; set; } = 7;
-    public int IntervalMinutes { get; set; } = 60;
-}
-
-public static class RetentionServiceCollectionExtensions
-{
-    public static IServiceCollection AddRetentionCleanup<TContext>(this IServiceCollection services, bool hasInbox)
-        where TContext : DbContext, IOutboxDbContext =>
-        services.AddHostedService(sp => new RetentionCleanupService<TContext>(
-            sp.GetRequiredService<IServiceScopeFactory>(), sp.GetRequiredService<IOptions<RetentionOptions>>(),
-            sp.GetRequiredService<ILogger<RetentionCleanupService<TContext>>>(), hasInbox));
-}
-
 /// <summary>İşlenmiş outbox kayıtlarını (ve varsa `inbox_messages` tablosunu) saklama süresi dolunca temizler.</summary>
 public sealed class RetentionCleanupService<TContext>(
     IServiceScopeFactory scopes, IOptions<RetentionOptions> options,

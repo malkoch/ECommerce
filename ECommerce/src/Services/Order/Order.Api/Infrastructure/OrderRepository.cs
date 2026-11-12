@@ -1,7 +1,7 @@
 using Messaging.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using OrderEntity = Order.Api.Domain.Order;
+using OrderEntity = Order.Api.Domain.Entities.Order;
 
 namespace Order.Api.Infrastructure;
 

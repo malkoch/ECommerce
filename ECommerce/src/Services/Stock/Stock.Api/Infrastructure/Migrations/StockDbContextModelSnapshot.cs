@@ -65,7 +65,7 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.ToTable("outbox_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.InboxMessage", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.InboxMessage", b =>
                 {
                     b.Property<Guid>("MessageId")
                         .ValueGeneratedOnAdd()
@@ -87,7 +87,7 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.ToTable("inbox_messages", (string)null);
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.StockItem", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.StockItem", b =>
                 {
                     b.Property<Guid>("ProductId")
                         .ValueGeneratedOnAdd()
@@ -122,7 +122,7 @@ namespace Stock.Api.Infrastructure.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.StockReservation", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.StockReservation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -156,7 +156,7 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.ToTable("stock_reservations", (string)null);
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.StockReservationItem", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.StockReservationItem", b =>
                 {
                     b.Property<Guid>("ReservationId")
                         .HasColumnType("uuid")
@@ -175,7 +175,7 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.ToTable("stock_reservation_items", (string)null);
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.StockUnit", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.StockUnit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -201,9 +201,9 @@ namespace Stock.Api.Infrastructure.Migrations
                     b.ToTable("stock_units", (string)null);
                 });
 
-            modelBuilder.Entity("Stock.Api.Domain.StockReservationItem", b =>
+            modelBuilder.Entity("Stock.Api.Domain.Entities.StockReservationItem", b =>
                 {
-                    b.HasOne("Stock.Api.Domain.StockReservation", null)
+                    b.HasOne("Stock.Api.Domain.Entities.StockReservation", null)
                         .WithMany()
                         .HasForeignKey("ReservationId")
                         .OnDelete(DeleteBehavior.Cascade)

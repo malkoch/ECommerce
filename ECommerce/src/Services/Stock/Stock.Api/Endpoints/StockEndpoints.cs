@@ -2,54 +2,6 @@ using Stock.Api.Infrastructure;
 
 namespace Stock.Api.Endpoints;
 
-public sealed record CreateProductRequest(string? Name);
-
-public sealed record CreateProductResponse(Guid ProductId, string Name);
-
-public sealed record AddStockRequest(int Quantity);
-
-public sealed record StockLevelResponse(Guid ProductId, string Name, int Available, int Reserved, int Total);
-
-public static class StockRequestValidator
-{
-    public const int MaxNameLength = 200;
-    public const int MaxQuantityPerRequest = 100_000;
-
-    public static Dictionary<string, string[]> Validate(CreateProductRequest? request)
-    {
-        var errors = new Dictionary<string, string[]>();
-        if (request is null)
-        {
-            errors["body"] = ["Request body is required."];
-        }
-        else if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            errors["name"] = ["Name is required."];
-        }
-        else if (request.Name.Trim().Length > MaxNameLength)
-        {
-            errors["name"] = [$"Name must be at most {MaxNameLength} characters."];
-        }
-
-        return errors;
-    }
-
-    public static Dictionary<string, string[]> Validate(AddStockRequest? request)
-    {
-        var errors = new Dictionary<string, string[]>();
-        if (request is null)
-        {
-            errors["body"] = ["Request body is required."];
-        }
-        else if (request.Quantity <= 0 || request.Quantity > MaxQuantityPerRequest)
-        {
-            errors["quantity"] = [$"Quantity must be between 1 and {MaxQuantityPerRequest}."];
-        }
-
-        return errors;
-    }
-}
-
 public static class StockEndpoints
 {
     public static void MapStockEndpoints(this IEndpointRouteBuilder app)

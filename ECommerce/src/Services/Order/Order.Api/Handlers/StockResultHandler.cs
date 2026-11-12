@@ -2,16 +2,9 @@ using Messaging;
 using Messaging.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Order.Api.Infrastructure;
-using OrderEntity = Order.Api.Domain.Order;
+using OrderEntity = Order.Api.Domain.Entities.Order;
 
 namespace Order.Api.Handlers;
-
-public enum ResultOutcome
-{
-    Applied,
-    Duplicate,
-    Ignored
-}
 
 public sealed class StockResultHandler(IOrderRepository repository, ILogger<StockResultHandler> logger)
 {

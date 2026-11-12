@@ -1,12 +1,11 @@
-using Order.Api.Domain;
-using Order.Api.Endpoints;
+using OrderEntity = Order.Api.Domain.Entities.Order;
 
 namespace Order.UnitTests;
 
 public class OrderDomainTests
 {
-    private static Order.Api.Domain.Order NewOrder() =>
-        Order.Api.Domain.Order.Create(Guid.NewGuid(), [(Guid.NewGuid(), 2)]);
+    private static OrderEntity NewOrder() =>
+        OrderEntity.Create(Guid.NewGuid(), [(Guid.NewGuid(), 2)]);
 
     [Fact]
     public void Create_StartsAsPendingStock()
@@ -22,7 +21,7 @@ public class OrderDomainTests
     {
         var product = Guid.NewGuid();
 
-        var order = Order.Api.Domain.Order.Create(Guid.NewGuid(), [(product, 1), (product, 2)]);
+        var order = OrderEntity.Create(Guid.NewGuid(), [(product, 1), (product, 2)]);
 
         Assert.Equal(3, Assert.Single(order.Items).Quantity);
     }
@@ -32,11 +31,11 @@ public class OrderDomainTests
     [InlineData(-1)]
     public void Create_RejectsNonPositiveQuantity(int quantity) =>
         Assert.Throws<ArgumentException>(() =>
-            Order.Api.Domain.Order.Create(Guid.NewGuid(), [(Guid.NewGuid(), quantity)]));
+            OrderEntity.Create(Guid.NewGuid(), [(Guid.NewGuid(), quantity)]));
 
     [Fact]
     public void Create_RejectsEmptyItems() =>
-        Assert.Throws<ArgumentException>(() => Order.Api.Domain.Order.Create(Guid.NewGuid(), []));
+        Assert.Throws<ArgumentException>(() => OrderEntity.Create(Guid.NewGuid(), []));
 
     [Fact]
     public void Confirm_IsIdempotentAndFinal()

@@ -6,13 +6,6 @@ using Stock.Api.Infrastructure;
 
 namespace Stock.Api.Handlers;
 
-public enum ReservationOutcome
-{
-    Succeeded,
-    Failed,
-    Duplicate
-}
-
 public sealed class ReserveStockHandler(IStockRepository repository, ILogger<ReserveStockHandler> logger)
 {
     public const string InsufficientStock = "INSUFFICIENT_STOCK";

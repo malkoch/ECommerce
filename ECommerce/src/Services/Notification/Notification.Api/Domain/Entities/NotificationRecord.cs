@@ -1,18 +1,6 @@
-namespace Notification.Api.Domain;
+using Notification.Api.Domain.Constants;
 
-public static class NotificationChannel
-{
-    public const string Email = "Email";
-    public const string Sms = "Sms";
-    public static readonly string[] All = [Email, Sms];
-}
-
-public static class NotificationStatus
-{
-    public const string Pending = "Pending";
-    public const string Sent = "Sent";
-    public const string Failed = "Failed";
-}
+namespace Notification.Api.Domain.Entities;
 
 public sealed class NotificationRecord
 {
@@ -32,7 +20,3 @@ public sealed class NotificationRecord
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? SentAtUtc { get; set; }
 }
-
-/// <summary>OrderConfirmed / OrderRejected olaylarının bildirim için ortak özeti.</summary>
-public sealed record OrderResultNotification(
-    Guid MessageId, Guid CorrelationId, string EventType, Guid OrderId, Guid CustomerId, string? ReasonCode);

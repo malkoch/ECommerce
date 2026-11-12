@@ -1,4 +1,6 @@
-namespace Order.Api.Domain;
+using Order.Api.Domain.Enums;
+
+namespace Order.Api.Domain.Entities;
 
 public sealed class Order
 {
